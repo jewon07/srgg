@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRGG 채팅방</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="login-container">
+    <h2>테스트</h2>
+    <input id="username" placeholder="Enter send man" />
+    <input id="room" placeholder="방 이름" />
+    <button id="join-room">채팅방 생성/들어가기</button>
+    <h3>생성된 방들</h3>
+    <ul id="room-list" style="cursor: pointer;"></ul>
+  </div>
+
+  <div id="chat-container" style="display: none;">
+    <div id="chat-box">
+      <div id="messages"></div>
+      <form id="chat-form">
+        <input type="text" id="message-input" placeholder="Type your message..." />
+        <button type="submit">전송</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="users-list-container" style="display: none;">
+    <div id="currentRoomName">현재 방: None</div>
+    <ul id="users-list" style="list-style-type: none;"></ul>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
