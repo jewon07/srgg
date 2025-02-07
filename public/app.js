@@ -15,6 +15,9 @@ const usersList = document.getElementById("users-list"); // 사용자 목록을 
 const usersListContainer = document.getElementById("users-list-container"); // 사용자 목록을 포함한 컨테이너
 const currentRoomName = document.getElementById("currentRoomName");
 
+// 사용자명 저장 변수 (본인이 보낸 메시지 필터링용)
+let localUsername = "";
+
 // TTS 관련 변수
 let ttsQueue = []; // TTS 메시지를 저장하는 큐
 let isSpeaking = false; // 현재 TTS가 재생 중인지 확인
@@ -78,6 +81,7 @@ joinRoomButton.addEventListener("click", () => {
   const room = roomInput.value;
 
   if (username && room) {
+    localUsername = username; // 현재 사용자명 저장
     socket.emit("joinRoom", { username, newRoom: room });
 
     // 화면 전환: 로그인 화면 숨기기, 채팅 화면 보이기
@@ -113,16 +117,17 @@ socket.on("message", (data) => {
   const currentTime = Date.now(); // 현재 시간
   const timeDiff = (currentTime - lastMessageTime) / 1000; // 간격 계산 (초 단위)
 
-  // TTS 메시지를 큐에 추가
-  ttsQueue.push({
-    message: `${data.message}`,
-    delayAudio: timeDiff > 3, // 이전 메시지와 3초 이상 간격일 경우 오디오 재생
-  });
+  // 본인이 보낸 메시지는 TTS 실행하지 않음
+  if (data.username !== localUsername) {
+    ttsQueue.push({
+      message: `${data.message}`,
+      delayAudio: timeDiff > 3, // 이전 메시지와 3초 이상 간격일 경우 오디오 재생
+    });
+
+    processTTSQueue();
+  }
 
   lastMessageTime = currentTime;
-
-  // 큐 처리 시작
-  processTTSQueue();
 });
 
 // 방에 있는 사용자 목록 업데이트
