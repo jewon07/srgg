@@ -8,7 +8,7 @@
 </head>
 <body>
   <div id="login-container">
-    <h2>테스트</h2>
+    <h2>내구 채팅방</h2>
     <input id="username" placeholder="닉" />
     <input id="room" placeholder="방 이름" />
     <button id="join-room">채팅방 생성/들어가기</button>
@@ -17,6 +17,11 @@
   </div>
 
   <div id="chat-container" style="display: none;">
+    <div id="tts-settings">
+      <label for="volume-control">음량 조절</label>
+      <input type="range" id="volume-control" min="1" max="100" step="1" value="100">
+      <span id="volume-value">100</span>
+    </div>
     <div id="chat-box">
       <div id="messages"></div>
       <form id="chat-form">

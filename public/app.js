@@ -14,6 +14,8 @@ const roomList = document.getElementById("room-list");
 const usersList = document.getElementById("users-list"); // 사용자 목록을 표시할 div
 const usersListContainer = document.getElementById("users-list-container"); // 사용자 목록을 포함한 컨테이너
 const currentRoomName = document.getElementById("currentRoomName");
+const volumeControl = document.getElementById("volume-control");
+const volumeValueDisplay = document.getElementById("volume-value");
 
 // 사용자명 저장 변수 (본인이 보낸 메시지 필터링용)
 let localUsername = "";
@@ -33,6 +35,7 @@ const processTTSQueue = () => {
   // 오디오 파일 재생
   if (delayAudio) {
     const audio = new Audio("radio.mp3");
+    audio.volume = parseFloat(volumeControl.value) / 100;
     audio.play();
     audio.onended = () => {
       playTTS(message);
@@ -46,6 +49,7 @@ const processTTSQueue = () => {
 const playTTS = (message) => {
   const speech = new SpeechSynthesisUtterance(message);
   speech.lang = "ko-KR";
+  speech.volume = parseFloat(volumeControl.value) / 100;
   speech.onend = () => {
     isSpeaking = false;
     processTTSQueue(); // 큐의 다음 메시지를 처리
@@ -53,6 +57,10 @@ const playTTS = (message) => {
 
   window.speechSynthesis.speak(speech);
 };
+
+volumeControl.addEventListener("input", () => {
+  volumeValueDisplay.textContent = volumeControl.value;
+});
 
 // 로그인 화면에서 방 목록 불러오기
 socket.emit("getRooms"); // 방 목록을 요청
