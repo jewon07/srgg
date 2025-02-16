@@ -61,7 +61,7 @@ body {
     width: 250px;
     max-height: 90%;
     overflow-y: auto;
-    display: none; /* 기본적으로 숨김 */
+    display: none; 
   }
   
   #users-list {
