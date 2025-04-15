@@ -9,8 +9,8 @@ const messagesDiv = document.getElementById("messages");
 const messageInput = document.getElementById("message-input");
 const chatForm = document.getElementById("chat-form");
 const roomList = document.getElementById("room-list");
-const usersList = document.getElementById("users-list"); // 사용자 목록을 표시할 div
-const usersListContainer = document.getElementById("users-list-container"); // 사용자 목록을 포함한 컨테이너
+const usersList = document.getElementById("users-list");
+const usersListContainer = document.getElementById("users-list-container");
 const currentRoomName = document.getElementById("currentRoomName");
 const volumeControl = document.getElementById("volume-control");
 const volumeValueDisplay = document.getElementById("volume-value");
@@ -18,8 +18,12 @@ const volumeValueDisplay = document.getElementById("volume-value");
 let localUsername = "";
 
 let ttsQueue = [];
-let isSpeaking = false; 
-let lastMessageTime = 0; 
+let isSpeaking = false;
+let lastMessageTime = 0;
+
+// Web Audio API 구성
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const gainNode = audioCtx.createGain();
 
 const processTTSQueue = () => {
   if (isSpeaking || ttsQueue.length === 0) return;
@@ -28,10 +32,10 @@ const processTTSQueue = () => {
   const { message, delayAudio } = ttsQueue.shift();
 
   if (delayAudio) {
-    const audio = new Audio("radio.mp3");
-    audio.volume = (parseFloat(volumeControl.value) / 100) * 0.1;
-    audio.play();
-    audio.onended = () => {
+    const radio = new Audio("radio.mp3");
+    radio.volume = (parseFloat(volumeControl.value) / 100) * 1;
+    radio.play();
+    radio.onended = () => {
       playTTS(message);
     };
   } else {
@@ -39,26 +43,55 @@ const processTTSQueue = () => {
   }
 };
 
-const playTTS = (message) => {
-  const speech = new SpeechSynthesisUtterance(message);
-  speech.lang = "ko-KR";
-  speech.volume = parseFloat(volumeControl.value) / 100;
-  speech.onend = () => {
-    isSpeaking = false;
-    processTTSQueue(); // 큐의 다음 메시지를 처리
-  };
+const playTTS = async (message) => {
+  try {
+    const response = await fetch("/synthesize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: message }),
+    });
 
-  window.speechSynthesis.speak(speech);
+    if (!response.ok) {
+      console.error("TTS 요청 실패");
+      isSpeaking = false;
+      processTTSQueue();
+      return;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+
+    const userVolume = parseFloat(volumeControl.value) / 100;
+    const gainBoostFactor = 3;
+    gainNode.gain.value = userVolume * gainBoostFactor;
+
+    source.connect(gainNode).connect(audioCtx.destination);
+    source.start(0);
+
+    source.onended = () => {
+      isSpeaking = false;
+      processTTSQueue();
+    };
+  } catch (error) {
+    console.error("TTS 처리 오류:", error);
+    isSpeaking = false;
+    processTTSQueue();
+  }
 };
 
 volumeControl.addEventListener("input", () => {
   volumeValueDisplay.textContent = volumeControl.value;
 });
 
-socket.emit("getRooms"); 
+socket.emit("getRooms");
 
 socket.on("roomList", (rooms) => {
-  roomList.innerHTML = ""; 
+  roomList.innerHTML = "";
   rooms.forEach((room) => {
     const li = document.createElement("li");
     li.textContent = room;
@@ -69,26 +102,23 @@ socket.on("roomList", (rooms) => {
   });
 });
 
-
 socket.on("currentRoom", (roomName) => {
   currentRoomName.textContent = `현재 방: ${roomName}`;
 });
-
 
 joinRoomButton.addEventListener("click", () => {
   const username = usernameInput.value;
   const room = roomInput.value;
 
   if (username && room) {
-    localUsername = username; 
+    localUsername = username;
     socket.emit("joinRoom", { username, newRoom: room });
 
     loginContainer.style.display = "none";
     chatContainer.style.display = "block";
-
     usersListContainer.style.display = "block";
   } else {
-    alert("Please enter a valid username and room name.");
+    alert("유효한 사용자 이름과 방 이름을 입력하세요.");
   }
 });
 
@@ -104,13 +134,17 @@ chatForm.addEventListener("submit", (e) => {
   }
 });
 
+// ✅ 자동 스크롤 기능이 추가된 메시지 이벤트 핸들러
 socket.on("message", (data) => {
   const messageElement = document.createElement("p");
   messageElement.textContent = `${data.username}: ${data.message}`;
   messagesDiv.appendChild(messageElement);
 
-  const currentTime = Date.now(); 
-  const timeDiff = (currentTime - lastMessageTime) / 1000; 
+  // 🔽 자동 스크롤
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  const currentTime = Date.now();
+  const timeDiff = (currentTime - lastMessageTime) / 1000;
 
   if (data.username !== localUsername) {
     ttsQueue.push({
@@ -124,7 +158,6 @@ socket.on("message", (data) => {
   lastMessageTime = currentTime;
 });
 
-
 socket.on("roomUsers", (users) => {
   usersList.innerHTML = "";
   users.forEach((user) => {
@@ -133,3 +166,7 @@ socket.on("roomUsers", (users) => {
     usersList.appendChild(li);
   });
 });
+
+setInterval(() => {
+  socket.emit("keepAlive", { timestamp: Date.now() });
+}, 30000);
